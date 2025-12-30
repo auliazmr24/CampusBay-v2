@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme.dart';
 import 'home_screen.dart';
 import '../product/add_listing_screen.dart';
+import '../search/search_screen.dart';
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
@@ -13,10 +14,10 @@ class MainNav extends StatefulWidget {
 
 class _MainNavState extends State<MainNav> {
   int _selectedIndex = 0;
-  
+
   final List<Widget> _pages = [
     const HomeScreen(),
-    const Center(child: Text("Search Page")), // Placeholder
+    const SearchScreen(),
     const AddListingScreen(),
     const Center(child: Text("Profile Page")), // Placeholder
   ];
@@ -32,8 +33,14 @@ class _MainNavState extends State<MainNav> {
         indicatorColor: AppColors.vanillaCustard,
         destinations: const [
           NavigationDestination(icon: Icon(LucideIcons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(LucideIcons.search), label: 'Browse'),
-          NavigationDestination(icon: Icon(LucideIcons.plusSquare), label: 'Jual'),
+          NavigationDestination(
+            icon: Icon(LucideIcons.search),
+            label: 'Browse',
+          ),
+          NavigationDestination(
+            icon: Icon(LucideIcons.plusSquare),
+            label: 'Jual',
+          ),
           NavigationDestination(icon: Icon(LucideIcons.user), label: 'Profile'),
         ],
       ),

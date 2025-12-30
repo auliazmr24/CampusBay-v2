@@ -1,22 +1,35 @@
+import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  // PENTING: Ganti sesuai environment
-  // Android Emulator → 192.168.1.8
-  // iOS Simulator → localhost
-  // Real Device → IP komputer (misal 192.168.1.5)
-  static const String baseUrl = "http://192.168.1.8:3000";
-  
+  static String get baseUrl {
+    if (kIsWeb) {
+      // Untuk Chrome/Web Browser
+      return "http://localhost:3000/api";
+    } else {
+      return "http://192.168.100.20:3000/api";
+    }
+  }
+
+  // Base URL untuk gambar
+  static String get baseUrlImage {
+    if (kIsWeb) {
+      return "http://localhost:3000";
+    } else {
+      return "http://192.168.100.20:3000";
+    }
+  }
+
   // Client dengan cookie support untuk session
   static final http.Client _client = http.Client();
   static String? _sessionCookie;
 
   // Helper: Tambahkan cookie ke header
   static Map<String, String> _getHeaders() {
-    final headers = {
-      'Content-Type': 'application/json',
-    };
+    final headers = {'Content-Type': 'application/json'};
     if (_sessionCookie != null) {
       headers['Cookie'] = _sessionCookie!;
     }
@@ -27,7 +40,7 @@ class ApiService {
   static void _saveCookie(http.Response response) {
     final rawCookie = response.headers['set-cookie'];
     if (rawCookie != null) {
-      _sessionCookie = rawCookie.split(';')[0]; // Ambil cookie utama
+      _sessionCookie = rawCookie.split(';')[0];
     }
   }
 
@@ -61,10 +74,13 @@ class ApiService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201) {
-        _saveCookie(response); // Simpan session
+        _saveCookie(response);
         return {'success': true, 'data': data};
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Registrasi gagal'};
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Registrasi gagal',
+        };
       }
     } catch (e) {
       return {'success': false, 'message': 'Koneksi error: $e'};
@@ -80,16 +96,13 @@ class ApiService {
       final response = await _client.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: _getHeaders(),
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode({'email': email, 'password': password}),
       );
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        _saveCookie(response); // Simpan session
+        _saveCookie(response);
         return {'success': true, 'data': data};
       } else {
         return {'success': false, 'message': data['message'] ?? 'Login gagal'};
@@ -110,7 +123,7 @@ class ApiService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        _sessionCookie = null; // Hapus session local
+        _sessionCookie = null;
         return {'success': true, 'message': data['message']};
       } else {
         return {'success': false, 'message': data['message'] ?? 'Logout gagal'};
@@ -133,7 +146,10 @@ class ApiService {
       if (response.statusCode == 200) {
         return {'success': true, 'data': data['user']};
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Gagal ambil user'};
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Gagal ambil user',
+        };
       }
     } catch (e) {
       return {'success': false, 'message': 'Koneksi error: $e'};
@@ -143,7 +159,7 @@ class ApiService {
   /// Check apakah user masih login (ada session aktif)
   static Future<bool> isLoggedIn() async {
     if (_sessionCookie == null) return false;
-    
+
     final result = await getCurrentUser();
     return result['success'] == true;
   }
@@ -160,16 +176,17 @@ class ApiService {
   }) async {
     try {
       final queryParams = <String, String>{};
-      if (category != null && category != 'Semua') queryParams['category'] = category;
+      if (category != null && category != 'Semua') {
+        queryParams['category'] = category;
+      }
       if (campus != null) queryParams['campus'] = campus;
       if (search != null) queryParams['search'] = search;
 
-      final uri = Uri.parse('$baseUrl/products').replace(queryParameters: queryParams);
-      
-      final response = await _client.get(
-        uri,
-        headers: _getHeaders(),
-      );
+      final uri = Uri.parse(
+        '$baseUrl/products',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      final response = await _client.get(uri, headers: _getHeaders());
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -195,14 +212,17 @@ class ApiService {
       if (response.statusCode == 200) {
         return {'success': true, 'data': data['product']};
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Produk tidak ditemukan'};
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Produk tidak ditemukan',
+        };
       }
     } catch (e) {
       return {'success': false, 'message': 'Koneksi error: $e'};
     }
   }
 
-  /// Add new product (require login)
+  /// Add new product (require login) - DENGAN UPLOAD GAMBAR
   static Future<Map<String, dynamic>> addProduct({
     required String title,
     required int price,
@@ -210,29 +230,55 @@ class ApiService {
     required String campus,
     String? description,
     String? condition,
-    String? imageUrl,
+    File? imageFile,
   }) async {
     try {
-      final response = await _client.post(
+      // Gunakan MultipartRequest untuk upload file
+      var request = http.MultipartRequest(
+        'POST',
         Uri.parse('$baseUrl/products'),
-        headers: _getHeaders(),
-        body: jsonEncode({
-          'title': title,
-          'price': price,
-          'category': category,
-          'campus': campus,
-          'description': description,
-          'condition': condition,
-          'image_url': imageUrl,
-        }),
       );
+
+      // Tambahkan Cookie Session ke Headers
+      if (_sessionCookie != null) {
+        request.headers['Cookie'] = _sessionCookie!;
+      }
+
+      // Tambahkan Text Fields
+      request.fields['title'] = title;
+      request.fields['price'] = price.toString();
+      request.fields['category'] = category;
+      request.fields['campus'] = campus;
+      if (description != null) request.fields['description'] = description;
+      if (condition != null) request.fields['condition'] = condition;
+
+      // Tambahkan File Gambar (Jika ada)
+      if (imageFile != null) {
+        // Cek ekstensi file manual atau pakai package mime
+        String mimeType = 'image/jpeg'; // Default fallback
+        if (imageFile.path.endsWith('.png')) mimeType = 'image/png';
+
+        var pic = await http.MultipartFile.fromPath(
+          'image',
+          imageFile.path,
+          contentType: MediaType.parse(mimeType),
+        );
+        request.files.add(pic);
+      }
+
+      // Kirim Request
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201) {
         return {'success': true, 'data': data};
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Gagal tambah produk'};
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Gagal tambah produk',
+        };
       }
     } catch (e) {
       return {'success': false, 'message': 'Koneksi error: $e'};
@@ -258,7 +304,7 @@ class ApiService {
     }
   }
 
-  /// Update product (require login + ownership)
+  /// Update product (require login + ownership) - DENGAN UPLOAD GAMBAR
   static Future<Map<String, dynamic>> updateProduct({
     required int id,
     required String title,
@@ -266,28 +312,44 @@ class ApiService {
     required String category,
     String? description,
     String? condition,
-    String? imageUrl,
+    File? imageFile,
   }) async {
     try {
-      final response = await _client.put(
+      var request = http.MultipartRequest(
+        'PUT',
         Uri.parse('$baseUrl/products/$id'),
-        headers: _getHeaders(),
-        body: jsonEncode({
-          'title': title,
-          'price': price,
-          'category': category,
-          'description': description,
-          'condition': condition,
-          'image_url': imageUrl,
-        }),
       );
+
+      // Tambahkan Cookie Session
+      if (_sessionCookie != null) {
+        request.headers['Cookie'] = _sessionCookie!;
+      }
+
+      // Tambahkan Text Fields
+      request.fields['title'] = title;
+      request.fields['price'] = price.toString();
+      request.fields['category'] = category;
+      if (description != null) request.fields['description'] = description;
+      if (condition != null) request.fields['condition'] = condition;
+
+      // Tambahkan File Gambar Baru (Jika ada)
+      if (imageFile != null) {
+        var pic = await http.MultipartFile.fromPath('image', imageFile.path);
+        request.files.add(pic);
+      }
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Gagal update produk'};
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Gagal update produk',
+        };
       }
     } catch (e) {
       return {'success': false, 'message': 'Koneksi error: $e'};
@@ -307,7 +369,10 @@ class ApiService {
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Gagal hapus produk'};
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Gagal hapus produk',
+        };
       }
     } catch (e) {
       return {'success': false, 'message': 'Koneksi error: $e'};
@@ -327,7 +392,10 @@ class ApiService {
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       } else {
-        return {'success': false, 'message': data['message'] ?? 'Gagal update status'};
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Gagal update status',
+        };
       }
     } catch (e) {
       return {'success': false, 'message': 'Koneksi error: $e'};
@@ -346,5 +414,20 @@ class ApiService {
   /// Check if has active session
   static bool hasSession() {
     return _sessionCookie != null;
+  }
+
+  /// Helper untuk mendapatkan full image URL
+  static String getImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) {
+      return ''; // Return empty jika tidak ada gambar
+    }
+
+    // Jika sudah full URL, return as is
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+
+    // Jika path relatif, gabungkan dengan baseUrl
+    return '$baseUrlImage$imagePath';
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../core/theme.dart';
+import '../services/api_service.dart';
 import '../screens/product/product_detail_screen.dart';
 
 class ProductCard extends StatelessWidget {
@@ -18,7 +19,7 @@ class ProductCard extends StatelessWidget {
     required this.price,
     required this.campus,
     required this.category,
-    this.imageUrl = '',
+    required this.imageUrl,
   });
 
   @override
@@ -28,7 +29,7 @@ class ProductCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ProductDetailScreen(productId: id),
+            builder: (context) => ProductDetailScreen(productId: id),
           ),
         );
       },
@@ -36,101 +37,151 @@ class ProductCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: AppColors.coffeeBean.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            )
+              color: AppColors.coffeeBean.withOpacity(0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Placeholder
+            // GAMBAR PRODUK
+            Expanded(flex: 5, child: _buildProductImage()),
+
+            // INFO PRODUK
             Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F0F0),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                ),
-                child: imageUrl.isEmpty
-                    ? Center(
-                        child: Icon(LucideIcons.image, color: Colors.grey.shade300, size: 32),
-                      )
-                    : ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Center(
-                              child: Icon(LucideIcons.image, color: Colors.grey.shade300, size: 32),
-                            );
-                          },
-                        ),
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Judul
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.coffeeBean,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    // Harga
+                    Text(
+                      price,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.honeyBronze,
+                      ),
+                    ),
+
+                    // Kampus & Kategori
+                    Row(
+                      children: [
+                        const Icon(
+                          LucideIcons.mapPin,
+                          size: 12,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            campus,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.vanillaCustard.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      category,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.coffeeBean,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    price,
-                    style: const TextStyle(
-                      color: AppColors.oxidizedIron,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(LucideIcons.mapPin, size: 12, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          campus,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 11),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  )
-                ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductImage() {
+    // Jika imageUrl kosong atau null
+    if (imageUrl.isEmpty) {
+      return _buildPlaceholder();
+    }
+
+    // Get full URL dari ApiService
+    final fullUrl = ApiService.getImageUrl(imageUrl);
+
+    print('🖼️ Loading image: $fullUrl');
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      child: Image.network(
+        fullUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) {
+            // Gambar sudah selesai load
+            return child;
+          }
+
+          // Tampilkan loading indicator
+          return Container(
+            color: Colors.grey[200],
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+                color: AppColors.honeyBronze,
               ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          // Jika gambar gagal load
+          print('❌ Error loading image: $error');
+          print('❌ URL: $fullUrl');
+          return _buildPlaceholder(hasError: true);
+        },
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder({bool hasError = false}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              hasError ? LucideIcons.imageOff : LucideIcons.image,
+              size: 40,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              hasError ? 'Gambar tidak tersedia' : 'Tanpa foto',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
             ),
           ],
         ),

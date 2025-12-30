@@ -30,13 +30,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final result = await ApiService.getProductById(widget.productId);
 
     if (result['success'] == true) {
-      setState(() {
-        _product = result['data'];
-        _isLoading = false;
-      });
-    } else {
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() {
+          _product = result['data'];
+          _isLoading = false;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['message'] ?? 'Gagal memuat produk')),
         );
@@ -48,15 +50,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Future<void> _contactSeller() async {
     if (_product == null) return;
 
-    // Placeholder: Nanti bisa pakai WhatsApp atau messaging
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Hubungi Penjual'),
-        content: Text(
-          'Penjual: ${_product!['seller_name']}\n'
-          'Kampus: ${_product!['seller_campus']}\n'
-          'Jurusan: ${_product!['seller_major'] ?? 'Tidak disebutkan'}',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Penjual: ${_product!['seller_name']}'),
+            const SizedBox(height: 8),
+            Text('Kampus: ${_product!['seller_campus']}'),
+            const SizedBox(height: 8),
+            Text('Jurusan: ${_product!['seller_major'] ?? '-'}'),
+            const SizedBox(height: 8),
+            // Email sekarang sudah muncul (jika server.js sudah diperbaiki)
+            Text('Email: ${_product!['seller_email'] ?? '-'}'),
+          ],
         ),
         actions: [
           TextButton(
@@ -72,7 +82,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.coffeeBean),
+        ),
       );
     }
 
@@ -87,40 +99,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         children: [
           CustomScrollView(
             slivers: [
+              // --- APP BAR DENGAN GAMBAR ---
               SliverAppBar(
                 expandedHeight: 350,
                 pinned: true,
                 backgroundColor: AppColors.background,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: _product!['image_url'] != null && _product!['image_url'].isNotEmpty
-                      ? Image.network(
-                          _product!['image_url'],
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[200],
-                              child: Center(
-                                child: Icon(LucideIcons.image, size: 60, color: Colors.grey[400]),
-                              ),
-                            );
-                          },
-                        )
-                      : Container(
-                          color: Colors.grey[200],
-                          child: Center(
-                            child: Icon(LucideIcons.image, size: 60, color: Colors.grey[400]),
-                          ),
-                        ),
-                ),
                 leading: Container(
                   margin: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: AppColors.white,
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                      ),
+                    ],
                   ),
                   child: IconButton(
-                    icon: const Icon(LucideIcons.arrowLeft, color: AppColors.coffeeBean, size: 20),
+                    icon: const Icon(
+                      LucideIcons.arrowLeft,
+                      color: AppColors.coffeeBean,
+                      size: 20,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ),
@@ -130,15 +131,58 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.white,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                        ),
+                      ],
                     ),
                     child: IconButton(
-                      icon: const Icon(LucideIcons.heart, color: AppColors.oxidizedIron, size: 20),
+                      icon: const Icon(
+                        LucideIcons.heart,
+                        color: AppColors.oxidizedIron,
+                        size: 20,
+                      ),
                       onPressed: () {},
                     ),
                   ),
                 ],
+                flexibleSpace: FlexibleSpaceBar(
+                  background:
+                      _product!['image_url'] != null &&
+                          _product!['image_url'].isNotEmpty
+                      ? Image.network(
+                          // --- PERBAIKAN DI SINI: Gunakan ApiService.getImageUrl ---
+                          ApiService.getImageUrl(_product!['image_url']),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: Center(
+                                child: Icon(
+                                  LucideIcons.image,
+                                  size: 60,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.grey[200],
+                          child: Center(
+                            child: Icon(
+                              LucideIcons.image,
+                              size: 60,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                        ),
+                ),
               ),
+
+              // --- KONTEN DETAIL ---
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
@@ -159,7 +203,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                       Text(
                         _product!['title'],
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(height: 1.3),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.headlineMedium?.copyWith(height: 1.3),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -179,14 +225,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.vanillaCustard.withValues(alpha: 0.5)),
+                          border: Border.all(
+                            color: AppColors.vanillaCustard.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
                         ),
                         child: Row(
                           children: [
                             const CircleAvatar(
                               backgroundColor: AppColors.vanillaCustard,
                               radius: 24,
-                              child: Icon(LucideIcons.user, color: AppColors.coffeeBean),
+                              child: Icon(
+                                LucideIcons.user,
+                                color: AppColors.coffeeBean,
+                              ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -195,7 +248,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 children: [
                                   Text(
                                     _product!['seller_name'],
-                                    style: Theme.of(context).textTheme.labelLarge,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelLarge,
                                   ),
                                   const SizedBox(height: 2),
                                   Row(
@@ -203,12 +258,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       Flexible(
                                         child: Text(
                                           '${_product!['seller_major'] ?? 'Mahasiswa'} ${_product!['seller_year'] != null ? "'${_product!['seller_year']}" : ''}',
-                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(fontSize: 12),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       const SizedBox(width: 4),
-                                      const Icon(LucideIcons.badgeCheck, size: 14, color: AppColors.tropicalTeal),
+                                      const Icon(
+                                        LucideIcons.badgeCheck,
+                                        size: 14,
+                                        color: AppColors.tropicalTeal,
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -219,17 +281,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ),
 
                       const SizedBox(height: 24),
-                      Text("Deskripsi Barang", style: Theme.of(context).textTheme.titleLarge),
+                      Text(
+                        "Deskripsi Barang",
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         _product!['description'] ?? 'Tidak ada deskripsi',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6, color: Colors.black87),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          height: 1.6,
+                          color: Colors.black87,
+                        ),
                       ),
-                      const SizedBox(height: 120), // Space agar tidak tertutup tombol bawah
+                      const SizedBox(height: 120),
                     ],
                   ),
                 ),
-              )
+              ),
             ],
           ),
 
@@ -243,9 +311,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               decoration: BoxDecoration(
                 color: AppColors.white,
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  ),
                 ],
-                border: const Border(top: BorderSide(color: AppColors.vanillaCustard, width: 0.5)),
+                border: const Border(
+                  top: BorderSide(color: AppColors.vanillaCustard, width: 0.5),
+                ),
               ),
               child: ElevatedButton.icon(
                 onPressed: _contactSeller,
@@ -253,13 +327,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   backgroundColor: AppColors.coffeeBean,
                   foregroundColor: AppColors.white,
                   padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 icon: const Icon(LucideIcons.messageCircle),
-                label: const Text("HUBUNGI PENJUAL", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                label: const Text(
+                  "HUBUNGI PENJUAL",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -273,7 +352,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.vanillaCustard),
       ),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.coffeeBean)),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+          color: AppColors.coffeeBean,
+        ),
+      ),
     );
   }
 
