@@ -4,33 +4,42 @@ import '../core/theme.dart';
 import '../screens/product/product_detail_screen.dart';
 
 class ProductCard extends StatelessWidget {
+  final int id;
   final String title;
   final String price;
   final String campus;
+  final String category;
   final String imageUrl;
 
   const ProductCard({
     super.key,
+    required this.id,
     required this.title,
     required this.price,
     required this.campus,
-    required this.imageUrl,
+    required this.category,
+    this.imageUrl = '',
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductDetailScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductDetailScreen(productId: id),
+          ),
+        );
       },
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200), // Border lebih halus
+          border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: AppColors.coffeeBean.withValues(alpha: 0.04), // Shadow sangat halus
+              color: AppColors.coffeeBean.withValues(alpha: 0.04),
               blurRadius: 12,
               offset: const Offset(0, 6),
             )
@@ -39,18 +48,30 @@ class ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Placeholder Lebih Bagus
+            // Image Placeholder
             Expanded(
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F0F0), // Abu-abu sangat muda
+                  color: const Color(0xFFF0F0F0),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
-                child: Center(
-                  // Ikon Lucide lebih clean daripada Icons.image
-                  child: Icon(LucideIcons.image, color: Colors.grey.shade300, size: 32)
-                ),
+                child: imageUrl.isEmpty
+                    ? Center(
+                        child: Icon(LucideIcons.image, color: Colors.grey.shade300, size: 32),
+                      )
+                    : ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        child: Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Icon(LucideIcons.image, color: Colors.grey.shade300, size: 32),
+                            );
+                          },
+                        ),
+                      ),
               ),
             ),
             Padding(
@@ -62,31 +83,50 @@ class ProductCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.vanillaCustard.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(4)
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Text("Elektronik", style: TextStyle(fontSize: 10, color: AppColors.coffeeBean, fontWeight: FontWeight.w600)),
+                    child: Text(
+                      category,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.coffeeBean,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  Text(title, 
-                    maxLines: 1, 
+                  Text(
+                    title,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.bold)
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   const SizedBox(height: 4),
-                  Text(price, 
+                  Text(
+                    price,
                     style: const TextStyle(
-                      color: AppColors.oxidizedIron, 
+                      color: AppColors.oxidizedIron,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 14
-                    )
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       const Icon(LucideIcons.mapPin, size: 12, color: Colors.grey),
                       const SizedBox(width: 4),
-                      Expanded(child: Text(campus, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 11), maxLines: 1)),
+                      Expanded(
+                        child: Text(
+                          campus,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 11),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   )
                 ],
