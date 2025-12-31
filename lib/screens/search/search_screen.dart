@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme.dart';
-import '../../services/api_service.dart'; // Gunakan API Service
-import '../../widgets/product_card.dart'; // Gunakan Widget ProductCard yang sudah jadi
+import '../../services/api_service.dart';
+import '../../widgets/product_card.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -15,9 +15,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = false;
   List<dynamic> _foundProducts = [];
-
-  // Riwayat pencarian (disimpan lokal di memori sementara)
-  final List<String> _searchHistory = ["Macbook", "Kalkulus", "Meja Lipat"];
+  bool _hasSearched = false; // Menandakan user sudah menekan enter/search
 
   @override
   void dispose() {
@@ -25,206 +23,178 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
-  // Fungsi Mencari ke Server
+  // Fungsi untuk memanggil API Search
   Future<void> _runSearch(String keyword) async {
-    if (keyword.isEmpty) {
-      setState(() {
-        _foundProducts = [];
-        _isLoading = false;
-      });
-      return;
-    }
+    if (keyword.trim().isEmpty) return;
+    
+    // Dismiss keyboard
+    FocusScope.of(context).unfocus();
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _hasSearched = true;
+    });
 
     try {
-      // Panggil API dengan parameter search
       final products = await ApiService.getProducts(search: keyword);
-
-      setState(() {
-        _foundProducts = products;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _foundProducts = products;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      print("Error searching: $e");
-      setState(() {
-        _foundProducts = [];
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mencari: $e')),
+        );
+      }
     }
   }
 
-  void _addToHistory(String value) {
-    if (value.isNotEmpty && !_searchHistory.contains(value)) {
-      setState(() {
-        _searchHistory.insert(0, value);
-        if (_searchHistory.length > 5) {
-          _searchHistory.removeLast();
-        }
-      });
-    }
-  }
-
-  void _deleteHistoryItem(String item) {
-    setState(() {
-      _searchHistory.remove(item);
-    });
+  // Helper formatting harga
+  String _formatPrice(int price) {
+    return price.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isSearching = _searchController.text.isNotEmpty;
-
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Cari Barang",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.coffeeBean,
-                ),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        title: const Text("Pencarian", style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        surfaceTintColor: Colors.transparent,
+      ),
+      body: Column(
+        children: [
+          // --- 1. SEARCH BAR MODERN ---
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.coffeeBean.withValues(alpha: 0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 4),
+                  )
+                ],
               ),
-              const SizedBox(height: 16),
-
-              // SEARCH BAR
-              TextField(
+              child: TextField(
                 controller: _searchController,
                 textInputAction: TextInputAction.search,
-                onSubmitted: (value) {
-                  _addToHistory(value);
-                  _runSearch(value);
-                },
+                onSubmitted: _runSearch,
+                autofocus: false, // Set true jika ingin langsung keyboard muncul
                 decoration: InputDecoration(
-                  hintText: 'Cari barang, buku, kos...',
+                  hintText: "Cari laptop, buku, kos...",
                   hintStyle: TextStyle(color: Colors.grey[400]),
-                  prefixIcon: const Icon(
-                    LucideIcons.search,
-                    color: Colors.grey,
-                  ),
-                  suffixIcon: isSearching
+                  prefixIcon: const Icon(LucideIcons.search, color: AppColors.honeyBronze),
+                  suffixIcon: _searchController.text.isNotEmpty || _hasSearched
                       ? IconButton(
-                          icon: const Icon(LucideIcons.x, color: Colors.grey),
+                          icon: const Icon(LucideIcons.x, size: 18, color: Colors.grey),
                           onPressed: () {
                             _searchController.clear();
                             setState(() {
+                              _hasSearched = false;
                               _foundProducts = [];
                             });
                           },
                         )
                       : null,
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.honeyBronze),
-                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 ),
+                onChanged: (value) {
+                  // Rebuild untuk memunculkan tombol X
+                  setState(() {}); 
+                },
               ),
-              const SizedBox(height: 24),
-
-              // KONTEN UTAMA
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.honeyBronze,
-                        ),
-                      )
-                    : isSearching
-                    ? _buildSearchResults()
-                    : _buildSearchHistory(),
-              ),
-            ],
+            ),
           ),
-        ),
+
+          // --- 2. KONTEN UTAMA ---
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.honeyBronze))
+                : _hasSearched
+                    ? _buildSearchResults()
+                    : _buildSuggestions(),
+          ),
+        ],
       ),
     );
   }
 
-  // TAMPILAN RIWAYAT PENCARIAN
-  Widget _buildSearchHistory() {
-    if (_searchHistory.isEmpty) {
-      return Center(
-        child: Text(
-          "Belum ada riwayat pencarian",
-          style: TextStyle(color: Colors.grey[400]),
-        ),
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  // Tampilan Default: Saran Pencarian (Chips)
+  Widget _buildSuggestions() {
+    final List<String> popularTags = [
+      "Macbook", "Kalkulus", "Meja Lipat", 
+      "Kemeja Flanel", "Iphone 11", "Helm Bogo",
+      "Kipas Angin", "Sepatu Vans"
+    ];
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              "Terakhir Dicari",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            if (_searchHistory.isNotEmpty)
-              TextButton(
-                onPressed: () => setState(() => _searchHistory.clear()),
-                child: const Text(
-                  "Hapus Semua",
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-          ],
+        const Text(
+          "Pencarian Populer", 
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.coffeeBean)
         ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: ListView.builder(
-            itemCount: _searchHistory.length,
-            itemBuilder: (context, index) {
-              final keyword = _searchHistory[index];
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(LucideIcons.history, color: Colors.grey),
-                title: Text(keyword),
-                trailing: IconButton(
-                  icon: const Icon(LucideIcons.x, size: 16, color: Colors.grey),
-                  onPressed: () => _deleteHistoryItem(keyword),
-                ),
-                onTap: () {
-                  _searchController.text = keyword;
-                  _runSearch(keyword);
-                },
-              );
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: popularTags.map((tag) => ActionChip(
+            label: Text(tag),
+            backgroundColor: AppColors.white,
+            surfaceTintColor: Colors.transparent,
+            side: const BorderSide(color: AppColors.vanillaCustard),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            labelStyle: const TextStyle(color: AppColors.coffeeBean, fontWeight: FontWeight.w500),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            onPressed: () {
+              _searchController.text = tag;
+              _runSearch(tag);
             },
-          ),
+          )).toList(),
         ),
       ],
     );
   }
 
-  // TAMPILAN HASIL PENCARIAN
+  // Tampilan Hasil Pencarian (Grid atau Empty State)
   Widget _buildSearchResults() {
     if (_foundProducts.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(LucideIcons.searchX, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.vanillaCustard.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(LucideIcons.searchX, size: 48, color: AppColors.coffeeBean),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              "Barang tidak ditemukan", 
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)
+            ),
+            const SizedBox(height: 8),
             Text(
-              "Barang tidak ditemukan",
-              style: TextStyle(color: Colors.grey[500]),
+              "Coba gunakan kata kunci lain ya.", 
+              style: TextStyle(color: Colors.grey[600])
             ),
           ],
         ),
@@ -232,6 +202,7 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return GridView.builder(
+      padding: const EdgeInsets.all(20),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 0.7, // Disesuaikan agar ProductCard pas
@@ -241,8 +212,6 @@ class _SearchScreenState extends State<SearchScreen> {
       itemCount: _foundProducts.length,
       itemBuilder: (context, index) {
         final product = _foundProducts[index];
-
-        // PENTING: Gunakan Widget ProductCard yang sama dengan Home
         return ProductCard(
           id: product['id'],
           title: product['title'] ?? 'Tanpa Nama',
@@ -252,13 +221,6 @@ class _SearchScreenState extends State<SearchScreen> {
           imageUrl: product['image_url'] ?? '',
         );
       },
-    );
-  }
-
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
     );
   }
 }

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-// ignore: unused_import
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../services/api_service.dart';
 
@@ -47,6 +45,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
+  // =========================
+  // 🔹 ADD TO CART
+  // =========================
+  Future<void> _addToCart() async {
+    setState(() => _isLoading = true);
+
+    bool success = await ApiService.addToCart(widget.productId);
+
+    setState(() => _isLoading = false);
+
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Berhasil masuk keranjang!"),
+          backgroundColor: AppColors.tropicalTeal,
+        ),
+      );
+    }
+  }
+
+  // =========================
+  // 🔹 CONTACT SELLER
+  // =========================
   Future<void> _contactSeller() async {
     if (_product == null) return;
 
@@ -64,7 +85,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             const SizedBox(height: 8),
             Text('Jurusan: ${_product!['seller_major'] ?? '-'}'),
             const SizedBox(height: 8),
-            // Email sekarang sudah muncul (jika server.js sudah diperbaiki)
             Text('Email: ${_product!['seller_email'] ?? '-'}'),
           ],
         ),
@@ -99,97 +119,48 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         children: [
           CustomScrollView(
             slivers: [
-              // --- APP BAR DENGAN GAMBAR ---
+              // =========================
+              // APP BAR IMAGE
+              // =========================
               SliverAppBar(
                 expandedHeight: 350,
                 pinned: true,
                 backgroundColor: AppColors.background,
-                leading: Container(
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      LucideIcons.arrowLeft,
-                      color: AppColors.coffeeBean,
-                      size: 20,
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
+                leading: _circleButton(
+                  icon: LucideIcons.arrowLeft,
+                  onTap: () => Navigator.pop(context),
                 ),
                 actions: [
-                  Container(
-                    margin: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(
-                        LucideIcons.heart,
-                        color: AppColors.oxidizedIron,
-                        size: 20,
-                      ),
-                      onPressed: () {},
-                    ),
+                  _circleButton(
+                    icon: LucideIcons.heart,
+                    onTap: () {},
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
                   background:
                       _product!['image_url'] != null &&
-                          _product!['image_url'].isNotEmpty
-                      ? Image.network(
-                          // --- PERBAIKAN DI SINI: Gunakan ApiService.getImageUrl ---
-                          ApiService.getImageUrl(_product!['image_url']),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[200],
-                              child: Center(
-                                child: Icon(
-                                  LucideIcons.image,
-                                  size: 60,
-                                  color: Colors.grey[400],
-                                ),
+                              _product!['image_url'].isNotEmpty
+                          ? Image.network(
+                              ApiService.getImageUrl(
+                                _product!['image_url'],
                               ),
-                            );
-                          },
-                        )
-                      : Container(
-                          color: Colors.grey[200],
-                          child: Center(
-                            child: Icon(
-                              LucideIcons.image,
-                              size: 60,
-                              color: Colors.grey[400],
-                            ),
-                          ),
-                        ),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  _imagePlaceholder(),
+                            )
+                          : _imagePlaceholder(),
                 ),
               ),
 
-              // --- KONTEN DETAIL ---
+              // =========================
+              // CONTENT
+              // =========================
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Badge Kategori & Kondisi
                       Row(
                         children: [
                           _buildBadge(_product!['category'] ?? 'Lainnya'),
@@ -203,84 +174,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                       Text(
                         _product!['title'],
-                        style: Theme.of(
-                          context,
-                        ).textTheme.headlineMedium?.copyWith(height: 1.3),
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(height: 1.3),
                       ),
                       const SizedBox(height: 8),
+
                       Text(
                         'Rp ${_formatPrice(_product!['price'])}',
                         style: const TextStyle(
                           fontSize: 26,
-                          color: AppColors.oxidizedIron,
                           fontWeight: FontWeight.w800,
-                          fontFamily: 'Plus Jakarta Sans',
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Seller Info Card
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.vanillaCustard.withValues(
-                              alpha: 0.5,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const CircleAvatar(
-                              backgroundColor: AppColors.vanillaCustard,
-                              radius: 24,
-                              child: Icon(
-                                LucideIcons.user,
-                                color: AppColors.coffeeBean,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _product!['seller_name'],
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.labelLarge,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          '${_product!['seller_major'] ?? 'Mahasiswa'} ${_product!['seller_year'] != null ? "'${_product!['seller_year']}" : ''}',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium
-                                              ?.copyWith(fontSize: 12),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Icon(
-                                        LucideIcons.badgeCheck,
-                                        size: 14,
-                                        color: AppColors.tropicalTeal,
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                          color: AppColors.oxidizedIron,
                         ),
                       ),
 
                       const SizedBox(height: 24),
+
+                      // Seller Card
+                      _sellerCard(),
+
+                      const SizedBox(height: 24),
+
                       Text(
                         "Deskripsi Barang",
                         style: Theme.of(context).textTheme.titleLarge,
@@ -288,10 +204,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       const SizedBox(height: 12),
                       Text(
                         _product!['description'] ?? 'Tidak ada deskripsi',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          height: 1.6,
-                          color: Colors.black87,
-                        ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyLarge
+                            ?.copyWith(height: 1.6),
                       ),
                       const SizedBox(height: 120),
                     ],
@@ -301,7 +217,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ],
           ),
 
-          // Bottom Action Bar
+          // =========================
+          // 🔹 BOTTOM ACTION BAR (MERGED)
+          // =========================
           Positioned(
             bottom: 0,
             left: 0,
@@ -321,22 +239,141 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   top: BorderSide(color: AppColors.vanillaCustard, width: 0.5),
                 ),
               ),
-              child: ElevatedButton.icon(
-                onPressed: _contactSeller,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.coffeeBean,
-                  foregroundColor: AppColors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _addToCart,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.honeyBronze,
+                        foregroundColor: AppColors.coffeeBean,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(LucideIcons.shoppingBag),
+                      label: const Text(
+                        "+ KERANJANG",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   ),
-                ),
-                icon: const Icon(LucideIcons.messageCircle),
-                label: const Text(
-                  "HUBUNGI PENJUAL",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _contactSeller,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.coffeeBean,
+                        foregroundColor: AppColors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(LucideIcons.messageCircle),
+                      label: const Text(
+                        "HUBUNGI PENJUAL",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // HELPERS
+  // =========================
+  Widget _circleButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: AppColors.coffeeBean, size: 20),
+        onPressed: onTap,
+      ),
+    );
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(
+      color: Colors.grey[200],
+      child: Center(
+        child: Icon(
+          LucideIcons.image,
+          size: 60,
+          color: Colors.grey[400],
+        ),
+      ),
+    );
+  }
+
+  Widget _sellerCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.vanillaCustard.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            backgroundColor: AppColors.vanillaCustard,
+            radius: 24,
+            child: Icon(LucideIcons.user, color: AppColors.coffeeBean),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _product!['seller_name'],
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '${_product!['seller_major'] ?? 'Mahasiswa'} ${_product!['seller_year'] != null ? "'${_product!['seller_year']}" : ''}',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      LucideIcons.badgeCheck,
+                      size: 14,
+                      color: AppColors.tropicalTeal,
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -366,7 +403,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   String _formatPrice(int price) {
     return price.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
+      (m) => '${m[1]}.',
     );
   }
 }

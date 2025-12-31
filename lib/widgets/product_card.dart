@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'dart:developer' as developer;
 import '../core/theme.dart';
 import '../services/api_service.dart';
 import '../screens/product/product_detail_screen.dart';
@@ -39,7 +40,7 @@ class ProductCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: AppColors.coffeeBean.withOpacity(0.08),
+              color: AppColors.coffeeBean.withValues(alpha: 0.08),
               blurRadius: 15,
               offset: const Offset(0, 4),
             ),
@@ -123,7 +124,7 @@ class ProductCard extends StatelessWidget {
     // Get full URL dari ApiService
     final fullUrl = ApiService.getImageUrl(imageUrl);
 
-    print('🖼️ Loading image: $fullUrl');
+    developer.log('🖼️ Loading image: $fullUrl');
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
@@ -155,8 +156,8 @@ class ProductCard extends StatelessWidget {
         },
         errorBuilder: (context, error, stackTrace) {
           // Jika gambar gagal load
-          print('❌ Error loading image: $error');
-          print('❌ URL: $fullUrl');
+          developer.log('❌ Error loading image: $error');
+          developer.log('❌ URL: $fullUrl');
           return _buildPlaceholder(hasError: true);
         },
       ),

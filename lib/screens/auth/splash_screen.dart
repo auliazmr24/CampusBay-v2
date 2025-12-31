@@ -13,7 +13,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () { // Lama dikit biar logo keliatan
+    Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.pushReplacement(context, 
           MaterialPageRoute(builder: (context) => const OnboardingScreen())
@@ -25,28 +25,20 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.honeyBronze,
+      // 1. Ubah background jadi Putih agar menyatu dengan logo JPG/PNG
+      backgroundColor: AppColors.white, 
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // LOGO CUSTOM
-            // Pastikan file 'assets/images/logo.png' sudah ada
+            // 2. Tampilkan Logo
             Image.asset(
               'assets/images/logo.png', 
-              width: 150, // Sesuaikan ukuran logo
-              height: 150,
+              width: 180, // Ukuran sedikit diperbesar
+              height: 180,
               errorBuilder: (context, error, stackTrace) {
-                // Fallback kalau gambar belum dimasukkan
                 return const Icon(Icons.broken_image, size: 80, color: AppColors.coffeeBean);
               },
-            ),
-            const SizedBox(height: 24),
-            Text(
-              "CampusBay",
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                fontSize: 32, // Sedikit diperkecil agar proporsional dengan logo
-              ),
             ),
           ],
         ),

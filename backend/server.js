@@ -136,6 +136,49 @@ function initDatabase() {
       else console.log("✅ Products table ready");
     }
   );
+
+  // Tabel Cart
+  db.run(`CREATE TABLE IF NOT EXISTS cart (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER DEFAULT 1,
+    FOREIGN KEY(product_id) REFERENCES products(id)
+  )`);
+
+  // --- API CART ---
+  // Get Cart items
+  app.get("/api/cart/:userId", (req, res) => {
+    const { userId } = req.params;
+    const query = `
+      SELECT cart.id, cart.quantity, products.title, products.price, products.image_url, products.campus 
+      FROM cart 
+      JOIN products ON cart.product_id = products.id 
+      WHERE cart.user_id = ?`;
+    
+    db.all(query, [userId], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    });
+  });
+
+  // Add to Cart
+  app.post("/api/cart", (req, res) => {
+    const { user_id, product_id } = req.body;
+    db.run("INSERT INTO cart (user_id, product_id) VALUES (?, ?)", [user_id, product_id], function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true, id: this.lastID });
+    });
+  });
+
+  // Remove from Cart (Checkout/Delete)
+  app.delete("/api/cart/:id", (req, res) => {
+    db.run("DELETE FROM cart WHERE id = ?", [req.params.id], function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true });
+    });
+  });
+
 }
 
 // ============================================

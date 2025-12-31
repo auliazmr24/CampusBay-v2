@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
@@ -429,5 +429,47 @@ class ApiService {
 
     // Jika path relatif, gabungkan dengan baseUrl
     return '$baseUrlImage$imagePath';
+  }
+
+  // --- CART FEATURES ---
+  
+  // Ambil data keranjang (Hardcode user_id = 1 untuk demo)
+  static Future<List<dynamic>> getCart() async {
+    try {
+      // FIX: Menghapus /api yang berlebih
+      final response = await http.get(Uri.parse('$baseUrl/cart/1'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint("Error fetching cart: $e");
+    }
+    return [];
+  }
+
+  // Tambah ke keranjang
+  static Future<bool> addToCart(int productId) async {
+    try {
+      // FIX: Menghapus /api yang berlebih
+      final response = await http.post(
+        Uri.parse('$baseUrl/cart'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'user_id': 1, 'product_id': productId}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Hapus dari keranjang
+  static Future<bool> removeFromCart(int cartId) async {
+    try {
+      // FIX: Menghapus /api yang berlebih
+      final response = await http.delete(Uri.parse('$baseUrl/cart/$cartId'));
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
   }
 }
