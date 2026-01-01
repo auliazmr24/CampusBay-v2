@@ -381,6 +381,46 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
   });
 });
 
+// UPDATE PROFILE (REQUIRE LOGIN)
+app.put("/api/auth/update", requireAuth, (req, res) => {
+  const { name, campus, major, year } = req.body;
+
+  if (!name || !campus) {
+    return res.status(400).json({
+      success: false,
+      message: "Nama dan Kampus wajib diisi",
+    });
+  }
+
+  db.run(
+    `UPDATE users 
+     SET name = ?, campus = ?, major = ?, year = ? 
+     WHERE id = ?`,
+    [name, campus, major, year, req.session.userId],
+    function (err) {
+      if (err) {
+        console.error("Update profile error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Gagal mengupdate profil",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Profil berhasil diperbarui",
+        user: {
+          id: req.session.userId,
+          name,
+          campus,
+          major,
+          year,
+        },
+      });
+    }
+  );
+});
+
 // ============================================
 // PRODUCT ROUTES
 // ============================================

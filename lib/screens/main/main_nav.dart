@@ -1,3 +1,4 @@
+import 'package:campusbay/screens/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme.dart';
@@ -19,7 +20,7 @@ class _MainNavState extends State<MainNav> {
     const HomeScreen(),
     const SearchScreen(),
     const AddListingScreen(),
-    const Center(child: Text("Profile Page")), // Placeholder
+    const ProfileScreen(), // Placeholder
   ];
 
   @override

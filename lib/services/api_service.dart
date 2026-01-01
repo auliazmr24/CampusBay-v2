@@ -10,7 +10,7 @@ class ApiService {
       // Untuk Chrome/Web Browser
       return "http://localhost:3000/api";
     } else {
-      return "http://192.168.100.20:3000/api";
+      return "http://192.168.1.2:3000/api";
     }
   }
 
@@ -19,7 +19,7 @@ class ApiService {
     if (kIsWeb) {
       return "http://localhost:3000";
     } else {
-      return "http://192.168.100.20:3000";
+      return "http://192.168.1.2:3000";
     }
   }
 
@@ -162,6 +162,40 @@ class ApiService {
 
     final result = await getCurrentUser();
     return result['success'] == true;
+  }
+
+  /// Update User Profile
+  static Future<Map<String, dynamic>> updateProfile({
+    required String name,
+    required String campus,
+    String? major,
+    String? year,
+  }) async {
+    try {
+      final response = await _client.put(
+        Uri.parse('$baseUrl/auth/update'),
+        headers: _getHeaders(),
+        body: jsonEncode({
+          'name': name,
+          'campus': campus,
+          'major': major,
+          'year': year,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message']};
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Gagal update profil',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi error: $e'};
+    }
   }
 
   // ============================================
@@ -432,7 +466,7 @@ class ApiService {
   }
 
   // --- CART FEATURES ---
-  
+
   // Ambil data keranjang (Hardcode user_id = 1 untuk demo)
   static Future<List<dynamic>> getCart() async {
     try {
