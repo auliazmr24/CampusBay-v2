@@ -10,7 +10,7 @@ class ApiService {
       // Untuk Chrome/Web Browser
       return "http://localhost:3000/api";
     } else {
-      return "http://192.168.1.2:3000/api";
+      return "http://192.168.100.20:3000/api";
     }
   }
 
@@ -19,7 +19,7 @@ class ApiService {
     if (kIsWeb) {
       return "http://localhost:3000";
     } else {
-      return "http://192.168.1.2:3000";
+      return "http://192.168.100.20:3000";
     }
   }
 
